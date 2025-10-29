@@ -1,0 +1,38 @@
+name: Deploy Static Page to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2 on main branch push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy files to EC2
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: /home/ubuntu
+
+      - name: Setup Apache and move files
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo apt-get update -y
+            sudo apt-get install -y apache2
+            sudo systemctl enable apache2
+            sudo systemctl start apache2
+            sudo rm -rf /var/www/html/*
+            sudo cp -r /home/ubuntu/* /var/www/html/
+            sudo systemctl restart apache2
